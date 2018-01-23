@@ -3,6 +3,7 @@ package minichain
 import "net/http"
 
 type BlockChainServer struct {
+	memPool MemPool
 }
 
 func (blockChainServer *BlockChainServer) TransactionHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,9 +15,5 @@ func (blockChainServer *BlockChainServer) TransactionHandler(w http.ResponseWrit
 
 	value := r.URL.Query().Get("value")
 
-	_, err := NewTransaction(key, value)
-
-	if err != nil {
-		http.Error(w, "Error while creating transaction", http.StatusInternalServerError)
-	}
+	tx := NewTransaction([]byte(key), []byte(value))
 }

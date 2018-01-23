@@ -1,31 +1,33 @@
 package minichain
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"golang.org/x/tools/go/gcimporter15/testdata"
+	"strconv"
 	"time"
 )
 
 type Transaction struct {
-	Id        string `json:"id"`
-	Key       string `json:"key"`
-	Value     string `json:"value"`
+	Id        []byte `json:"id"`
+	Key       []byte `json:"key"`
+	Value     []byte `json:"value"`
 	Timestamp int64  `json:"timestamp"`
 }
 
-func NewTransaction(key, value string) (*Transaction, error) {
+func NewTransaction(key, value []byte) *Transaction {
 	tx := &Transaction{
 		Key:       key,
 		Value:     value,
 		Timestamp: time.Now().Unix(),
 	}
 
-	if data, err := json.Marshal(tx); err != nil {
-		hash := sha256.Sum256(data)
-		tx.Id = string(hash[:])
+	timestampBytes := []byte(strconv.FormatInt(tx.Timestamp, 10))
 
-		return tx, nil
-	} else {
-		return nil, err
-	}
+	header := bytes.Join([][]byte{key, value, timestampBytes}, []byte{})
+	hash := sha256.Sum256(header)
+	tx.Id = hash[:]
+
+	return tx
 }
