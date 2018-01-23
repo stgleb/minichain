@@ -1,9 +1,9 @@
 package main
 
 import (
-	. "minichain"
 	"flag"
 	"github.com/BurntSushi/toml"
+	. "minichain"
 )
 
 var (
@@ -35,5 +35,5 @@ func main() {
 		panic(err)
 	}
 
-	println(config)
+	InitLogger(config)
 }
