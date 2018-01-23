@@ -3,8 +3,6 @@ package minichain
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 	"strconv"
 	"time"
 )
