@@ -4,20 +4,22 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"strconv"
+	"time"
 )
 
 type Block struct {
 	Timestamp     int64
-	PrevBlockHash []byte        `json:"prev-block-hash"`
-	BlockHash     []byte        `json:"block-hash"`
-	Transactions  []Transaction `json:"transactions"`
+	PrevBlockHash []byte         `json:"prev-block-hash"`
+	BlockHash     []byte         `json:"block-hash"`
+	Transactions  []*Transaction `json:"transactions"`
 }
 
-func NewBlock(prevBlockHash []byte, transactions []Transaction) *Block {
+func NewBlock(prevBlockHash []byte, transactions []*Transaction) *Block {
 	var txHashes [][]byte
 	var txHash [32]byte
 
 	block := &Block{
+		Timestamp:     time.Now().Unix(),
 		PrevBlockHash: prevBlockHash,
 		Transactions:  transactions,
 	}

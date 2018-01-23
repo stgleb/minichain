@@ -1,7 +1,10 @@
 package minichain
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -9,14 +12,15 @@ type MemPool struct {
 	file   *os.File
 	ticker *time.Ticker
 
-	Input    chan Transaction
-	ShutDown chan struct{}
+	LastBlock *Block
+	Input     chan *Transaction
+	ShutDown  chan struct{}
 }
 
 func NewMemPool(period int) *MemPool {
 	m := &MemPool{
 		ticker:   time.NewTicker(time.Second * time.Duration(period)),
-		Input:    make(chan Transaction),
+		Input:    make(chan *Transaction),
 		ShutDown: make(chan struct{}),
 	}
 
@@ -26,20 +30,39 @@ func NewMemPool(period int) *MemPool {
 }
 
 func (m MemPool) Run() {
-	var b *Block
+	var transactions = make([]*Transaction, 10)
 
 	for {
 		select {
 		case <-m.ShutDown:
-			m.Flush(b)
+			m.Flush(transactions)
 			return
 		case tx := <-m.Input:
 			GetLogger().Infof("Receive transaction %v", tx)
-			b.Transactions = append(b.Transactions, tx)
+			transactions = append(transactions, tx)
 		case <-m.ticker.C:
-			m.Flush(b)
+			m.Flush(transactions)
 		}
 	}
 }
 
-func (m MemPool) Flush(block *Block) {}
+func (m MemPool) Flush(transactions []*Transaction) error {
+	block := NewBlock(m.LastBlock.BlockHash, transactions)
+	txCount := len(block.Transactions)
+
+	blockBytes, err := json.Marshal(block)
+	header := []byte(strconv.Itoa(txCount))
+
+	if err != nil {
+		return err
+	}
+
+	data := bytes.Join([][]byte{header, blockBytes}, []byte{})
+	_, err = m.file.Write(data)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
