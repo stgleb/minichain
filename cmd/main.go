@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/BurntSushi/toml"
 	. "minichain"
+	"net/http"
 )
 
 var (
@@ -36,4 +37,13 @@ func main() {
 	}
 
 	InitLogger(config)
+	GetLogger().Info(config)
+	server := BlockChainServer{}
+
+	http.HandleFunc("/", server.TransactionHandler)
+	GetLogger().Infof("Listen and serve %s", config.Main.ListenStr)
+
+	if err := http.ListenAndServe(config.Main.ListenStr, nil); err != nil {
+		GetLogger().Fatal(err)
+	}
 }
