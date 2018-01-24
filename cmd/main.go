@@ -43,7 +43,11 @@ func main() {
 
 	InitLogger(config)
 	GetLogger().Info(config)
-	blockChainServer := NewBlockChainServer(config)
+	blockChainServer, err := NewBlockChainServer(config)
+
+	if err != nil {
+		GetLogger().Fatal(err)
+	}
 
 	http.HandleFunc("/tx", blockChainServer.TransactionHandler)
 
@@ -73,7 +77,19 @@ func RegisterShutDownHandler(server *http.Server, blockChainServer *BlockChainSe
 		defer cancel()
 
 		server.Shutdown(ctx)
-		close(blockChainServer.MemPool.ShutDown)
+
+		shutDownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		doneChan := make(chan struct{})
+		blockChainServer.BlockChain.ShutDown <- doneChan
+
+		select {
+		case <-doneChan:
+			GetLogger().Info("Blockchain has been stopped")
+		case <-shutDownCtx.Done():
+			GetLogger().Warnf("Flushing context finished with %v", shutDownCtx.Err())
+		}
 
 		GetLogger().Info("Server has been stopped")
 	}()
