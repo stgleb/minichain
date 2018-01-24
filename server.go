@@ -3,12 +3,12 @@ package minichain
 import "net/http"
 
 type BlockChainServer struct {
-	memPool *MemPool
+	MemPool *MemPool
 }
 
-func NewBlockChainServer() *BlockChainServer {
+func NewBlockChainServer(config *Config) *BlockChainServer {
 	return &BlockChainServer{
-		NewMemPool(1),
+		NewMemPool(config.BlockChain.TimeOut),
 	}
 }
 
@@ -22,5 +22,5 @@ func (blockChainServer *BlockChainServer) TransactionHandler(w http.ResponseWrit
 	value := r.URL.Query().Get("value")
 
 	tx := NewTransaction([]byte(key), []byte(value))
-	blockChainServer.memPool.Input <- tx
+	blockChainServer.MemPool.Input <- tx
 }

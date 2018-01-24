@@ -24,13 +24,13 @@ func NewMemPool(period int) *MemPool {
 		ShutDown: make(chan struct{}),
 	}
 
-	m.Run()
+	go m.Run()
 
 	return m
 }
 
 func (m MemPool) Run() {
-	var transactions = make([]*Transaction, 10)
+	var transactions = make([]*Transaction, 0, 10)
 
 	for {
 		select {
@@ -47,7 +47,14 @@ func (m MemPool) Run() {
 }
 
 func (m MemPool) Flush(transactions []*Transaction) error {
-	block := NewBlock(m.LastBlock.BlockHash, transactions)
+	var block *Block
+
+	if m.LastBlock != nil {
+		block = NewBlock(m.LastBlock.BlockHash, transactions)
+	} else {
+		block = NewBlock([]byte("Origin"), transactions)
+	}
+
 	txCount := len(block.Transactions)
 
 	blockBytes, err := json.Marshal(block)

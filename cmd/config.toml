@@ -1,8 +1,12 @@
 [Main]
-ListenStr="0.0.0.0:8080"
 LogLevel=4
 
 [BlockChain]
 BlockSize=1024
 Timeout=60
 DataDir="data/"
+
+[Http]
+ListenStr="0.0.0.0:8080"
+ReadTimeout=10
+WriteTimeout=10
