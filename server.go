@@ -1,6 +1,8 @@
 package minichain
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type BlockChainServer struct {
 	BlockChain *BlockChain
