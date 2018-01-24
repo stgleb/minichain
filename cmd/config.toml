@@ -3,7 +3,7 @@ LogLevel=4
 
 [BlockChain]
 BlockSize=1
-Timeout=1
+Timeout=60
 DataFile="../data/blockchain.dat"
 
 [Http]

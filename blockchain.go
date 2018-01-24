@@ -8,18 +8,28 @@ import (
 	"time"
 )
 
+const (
+	DIGEST_SIZE = 32
+)
+
 type BlockChain struct {
 	file   *os.File
 	ticker *time.Ticker
 
-	BlockSize int
-	LastBlock *Block
-	Timeout   time.Duration
-	Input     chan *Transaction
-	ShutDown  chan chan struct{}
+	BlockSize     int
+	LastBlockHash []byte
+	Timeout       time.Duration
+	Input         chan *Transaction
+	ShutDown      chan chan struct{}
 }
 
 func NewBlockChain(config *Config) (*BlockChain, error) {
+	prevBlockHash, err := GetLastBlockHash(config.BlockChain.DataFile)
+
+	if err != nil {
+		prevBlockHash = []byte("Origin block")
+	}
+
 	file, err := os.OpenFile(config.BlockChain.DataFile, os.O_SYNC|os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 
 	if err != nil {
@@ -27,12 +37,13 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	}
 
 	m := &BlockChain{
-		file:      file,
-		ticker:    time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
-		BlockSize: config.BlockChain.BlockSize,
-		Timeout:   time.Duration(config.BlockChain.TimeOut) * time.Second,
-		Input:     make(chan *Transaction),
-		ShutDown:  make(chan chan struct{}),
+		file:          file,
+		ticker:        time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
+		LastBlockHash: prevBlockHash,
+		BlockSize:     config.BlockChain.BlockSize,
+		Timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
+		Input:         make(chan *Transaction),
+		ShutDown:      make(chan chan struct{}),
 	}
 
 	go m.Run()
@@ -51,7 +62,7 @@ func (b BlockChain) Run() {
 				GetLogger().Error(err)
 			}
 
-			if err := b.file.Close();err != nil {
+			if err := b.file.Close(); err != nil {
 				GetLogger().Error(err)
 			}
 
@@ -87,12 +98,7 @@ func (b BlockChain) Flush(transactions []*Transaction) error {
 		return nil
 	}
 
-	if b.LastBlock != nil {
-		block = NewBlock(b.LastBlock.BlockHash, transactions)
-	} else {
-		block = NewBlock([]byte("Origin"), transactions)
-	}
-
+	block = NewBlock(b.LastBlockHash, transactions)
 	blockBytes, err := json.Marshal(block)
 
 	if err != nil {
@@ -103,7 +109,8 @@ func (b BlockChain) Flush(transactions []*Transaction) error {
 	header := make([]byte, 4)
 	binary.LittleEndian.PutUint32(header, blockSize)
 
-	data := bytes.Join([][]byte{header, blockBytes}, []byte{})
+	// Append current block hash to the end of record to find it out after restart
+	data := bytes.Join([][]byte{header, blockBytes, block.BlockHash}, []byte{})
 	n, err := b.file.Write(data)
 
 	if err != nil {
@@ -111,11 +118,12 @@ func (b BlockChain) Flush(transactions []*Transaction) error {
 	}
 
 	GetLogger().Debugf("Bytes written %d", n)
-	b.file.Sync()
+	err = b.file.Sync()
 
 	if err != nil {
 		return err
 	}
 
+	b.LastBlockHash = block.BlockHash
 	return nil
 }
