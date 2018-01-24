@@ -45,11 +45,11 @@ func main() {
 	GetLogger().Info(config)
 	blockChainServer := NewBlockChainServer(config)
 
-	http.HandleFunc("/", blockChainServer.TransactionHandler)
+	http.HandleFunc("/tx", blockChainServer.TransactionHandler)
 
 	server := &http.Server{
-		ReadTimeout:  time.Duration(config.Http.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(config.Http.WriteTimeout) * time.Second,
+		ReadTimeout:  time.Duration(config.Http.Timeout) * time.Second,
+		WriteTimeout: time.Duration(config.Http.Timeout) * time.Second,
 	}
 
 	l, err := net.Listen("tcp", config.Http.ListenStr)

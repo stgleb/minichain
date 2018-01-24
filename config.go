@@ -13,11 +13,10 @@ type MainConfig struct {
 type BlockChainConfig struct {
 	BlockSize int
 	TimeOut   int
-	DataDir   string
+	DataFile  string
 }
 
 type HttpConfig struct {
-	ListenStr    string
-	ReadTimeout  int64
-	WriteTimeout int64
+	ListenStr string
+	Timeout   int64
 }

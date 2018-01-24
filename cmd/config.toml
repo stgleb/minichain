@@ -4,9 +4,8 @@ LogLevel=4
 [BlockChain]
 BlockSize=1024
 Timeout=60
-DataDir="data/"
+DataFile="data/blockchain.dat"
 
 [Http]
 ListenStr="0.0.0.0:8080"
-ReadTimeout=10
-WriteTimeout=10
+Timeout=10

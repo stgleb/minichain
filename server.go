@@ -8,7 +8,8 @@ type BlockChainServer struct {
 
 func NewBlockChainServer(config *Config) *BlockChainServer {
 	return &BlockChainServer{
-		NewMemPool(config.BlockChain.TimeOut),
+		NewMemPool(config.BlockChain.BlockSize,
+			config.BlockChain.TimeOut),
 	}
 }
 
