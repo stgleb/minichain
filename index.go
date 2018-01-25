@@ -19,28 +19,36 @@ var (
 	NotEnoughDataErr = errors.New("not enough data in file")
 )
 
-func NewIndex(fileName string) (*Index, error) {
+func NewIndex(fileName string) (*Index, int64, error) {
+	GetLogger().Infof("Start building index of %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
-
-	stats, err := f.Stat()
-
-	if err != nil {
-		return nil, err
-	}
 
 	index := &Index{
 		file: f,
 		data: make(map[string]int64),
 	}
 
-	if stats.Size() == 0 {
-		return index, nil
+	if err != nil {
+		return index, -1, err
 	}
 
+	stats, err := f.Stat()
+
+	if err != nil {
+		return index, -1, err
+	}
+
+	if stats.Size() == 0 {
+		return index, -1, nil
+	}
+
+	var offset int64
+	var block *Block
+
 	for {
-		if block, offset, err := index.readBlock(); err != nil {
+		if block, offset, err = readBlock(index.file); err != nil {
 			if err != io.EOF {
-				return nil, err
+				return nil, -1, err
 			} else {
 				break
 			}
@@ -51,7 +59,7 @@ func NewIndex(fileName string) (*Index, error) {
 		}
 	}
 
-	return index, nil
+	return index, offset, nil
 }
 
 func (index *Index) Get(key string) (*Transaction, error) {
@@ -67,7 +75,7 @@ func (index *Index) Get(key string) (*Transaction, error) {
 		return nil, err
 	}
 
-	block, _, err := index.readBlock()
+	block, _, err := readBlock(index.file)
 
 	if err != nil {
 		return nil, err
@@ -82,21 +90,24 @@ func (index *Index) Get(key string) (*Transaction, error) {
 	return nil, KeyNotFoundErr
 }
 
+// Update index with new transactions
 func (index *Index) Update(offset int64, block *Block) {
 	for _, tx := range block.Transactions {
 		index.data[string(tx.Key)] = offset
 	}
 }
 
-func (index *Index) readBlock() (*Block, int64, error) {
-	offset, err := index.file.Seek(0, 1)
+// Reads block from blockchain file, assumes that file pointer of fd is set on
+// the beggining of next block
+func readBlock(fd *os.File) (*Block, int64, error) {
+	offset, err := fd.Seek(0, 1)
 
 	if err != nil {
 		return nil, -1, err
 	}
 
 	headerData := make([]byte, 0, 4)
-	n, err := index.file.Read(headerData)
+	n, err := fd.Read(headerData)
 
 	if err != nil {
 		return nil, -1, err
@@ -108,7 +119,7 @@ func (index *Index) readBlock() (*Block, int64, error) {
 
 	blockSize := binary.LittleEndian.Uint32(headerData)
 	blockBuffer := make([]byte, 0, blockSize)
-	n, err = index.file.Read(blockBuffer)
+	n, err = fd.Read(blockBuffer)
 
 	if err != nil {
 		return nil, -1, err
@@ -130,7 +141,8 @@ func (index *Index) readBlock() (*Block, int64, error) {
 		return nil, -1, err
 	}
 
-	_, err = index.file.Seek(DIGEST_SIZE, 1)
+	// Set fd to begin of next block or EOF
+	_, err = fd.Seek(DIGEST_SIZE, 1)
 
 	if err != nil {
 		return nil, -1, err

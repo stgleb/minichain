@@ -2,6 +2,7 @@ package minichain
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"os"
@@ -9,14 +10,17 @@ import (
 )
 
 const (
-	HEADER_SIZE = 4
-	DIGEST_SIZE = 32
+	HEADER_SIZE   = 4
+	DIGEST_SIZE   = 32
+	GENESIS_BLOCK = "Genesis block"
 )
 
 type BlockChain struct {
 	file   *os.File
 	ticker *time.Ticker
 
+	Offset        int64
+	Index         *Index
 	BlockSize     int
 	LastBlockHash []byte
 	Timeout       time.Duration
@@ -28,7 +32,8 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	prevBlockHash, err := GetLastBlockHash(config.BlockChain.DataFile)
 
 	if err != nil {
-		prevBlockHash = []byte("Genesis block")
+		hash := sha256.Sum256([]byte(GENESIS_BLOCK))
+		prevBlockHash = hash[:]
 	}
 
 	file, err := os.OpenFile(config.BlockChain.DataFile, os.O_SYNC|os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -37,9 +42,17 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		return nil, err
 	}
 
+	index, offset, err := NewIndex(config.BlockChain.DataFile)
+
+	if err != nil {
+		return nil, err
+	}
+
 	m := &BlockChain{
 		file:          file,
 		ticker:        time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
+		Offset:        offset,
+		Index:         index,
 		LastBlockHash: prevBlockHash,
 		BlockSize:     config.BlockChain.BlockSize,
 		Timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
@@ -124,6 +137,10 @@ func (b BlockChain) Flush(transactions []*Transaction) error {
 	if err != nil {
 		return err
 	}
+
+	// Update index with block that was written to disk
+	b.Index.Update(b.Offset, block)
+	b.Offset += int64(len(data))
 
 	b.LastBlockHash = block.BlockHash
 	return nil
