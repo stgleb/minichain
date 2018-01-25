@@ -10,7 +10,7 @@ import (
 
 type Index struct {
 	blockCount int
-	file       *os.File
+	fileName   string
 	data       map[string]int64
 }
 
@@ -22,60 +22,70 @@ var (
 func NewIndex(fileName string) (*Index, int64, error) {
 	GetLogger().Infof("Start building index of %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
+	defer f.Close()
 
 	index := &Index{
-		file: f,
-		data: make(map[string]int64),
+		fileName: fileName,
+		data:     make(map[string]int64),
 	}
 
 	if err != nil {
-		return index, -1, err
+		return index, 0, err
 	}
 
 	stats, err := f.Stat()
 
 	if err != nil {
-		return index, -1, err
+		return index, 0, err
 	}
 
 	if stats.Size() == 0 {
-		return index, -1, nil
+		return index, 0, nil
 	}
 
-	var offset int64
-	var block *Block
+	var (
+		blockCount int64
+		offset     int64
+		block      *Block
+	)
 
 	for {
-		if block, offset, err = readBlock(index.file); err != nil {
+		if block, offset, err = readBlock(f); err != nil {
 			if err != io.EOF {
-				return nil, -1, err
+				return nil, 0, err
 			} else {
 				break
 			}
 		} else {
+			GetLogger().Debugf("Read block id %s on offset %d",
+				string(block.BlockHash), offset)
 			for _, tx := range block.Transactions {
 				index.data[string(tx.Key)] = offset
 			}
+			blockCount++
 		}
 	}
 
+	GetLogger().Debugf("Index has been built from %d blocks", blockCount)
 	return index, offset, nil
 }
 
 func (index *Index) Get(key string) (*Transaction, error) {
+	f, err := os.OpenFile(index.fileName, os.O_RDONLY, 0600)
+	defer f.Close()
 	offset, ok := index.data[key]
 
 	if !ok {
 		return nil, KeyNotFoundErr
 	}
 
-	_, err := index.file.Seek(offset, 0)
+	_, err = f.Seek(offset, 0)
 
 	if err != nil {
 		return nil, err
 	}
 
-	block, _, err := readBlock(index.file)
+	block, _, err := readBlock(f)
 
 	if err != nil {
 		return nil, err
@@ -83,7 +93,7 @@ func (index *Index) Get(key string) (*Transaction, error) {
 
 	for _, tx := range block.Transactions {
 		if string(tx.Key) == key {
-			return tx, nil
+			return &tx, nil
 		}
 	}
 
@@ -98,7 +108,7 @@ func (index *Index) Update(offset int64, block *Block) {
 }
 
 // Reads block from blockchain file, assumes that file pointer of fd is set on
-// the beggining of next block
+// the beginning of next block
 func readBlock(fd *os.File) (*Block, int64, error) {
 	offset, err := fd.Seek(0, 1)
 
@@ -106,7 +116,7 @@ func readBlock(fd *os.File) (*Block, int64, error) {
 		return nil, -1, err
 	}
 
-	headerData := make([]byte, 0, 4)
+	headerData := make([]byte, HEADER_SIZE)
 	n, err := fd.Read(headerData)
 
 	if err != nil {
@@ -118,7 +128,7 @@ func readBlock(fd *os.File) (*Block, int64, error) {
 	}
 
 	blockSize := binary.LittleEndian.Uint32(headerData)
-	blockBuffer := make([]byte, 0, blockSize)
+	blockBuffer := make([]byte, blockSize)
 	n, err = fd.Read(blockBuffer)
 
 	if err != nil {
@@ -133,7 +143,7 @@ func readBlock(fd *os.File) (*Block, int64, error) {
 		return nil, -1, err
 	}
 
-	var block *Block
+	var block = &Block{}
 
 	err = json.Unmarshal(blockBuffer, block)
 

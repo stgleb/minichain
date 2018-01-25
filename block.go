@@ -3,18 +3,19 @@ package minichain
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"strconv"
 	"time"
 )
 
 type Block struct {
 	Timestamp     int64
-	PrevBlockHash []byte         `json:"prev-block-hash"`
-	BlockHash     []byte         `json:"block-hash"`
-	Transactions  []*Transaction `json:"transactions"`
+	PrevBlockHash []byte        `json:"prev-block-hash"`
+	BlockHash     []byte        `json:"block-hash"`
+	Transactions  []Transaction `json:"transactions"`
 }
 
-func NewBlock(prevBlockHash []byte, transactions []*Transaction) *Block {
+func NewBlock(prevBlockHash []byte, transactions []Transaction) *Block {
 	var txHashes [][]byte
 	var txHash [32]byte
 
@@ -35,4 +36,20 @@ func NewBlock(prevBlockHash []byte, transactions []*Transaction) *Block {
 	block.BlockHash = txHash[:]
 
 	return block
+}
+
+func (b *Block) UnmarshalJSON(data []byte) error {
+	type BlockAlias Block
+	aux := &struct {
+		*BlockAlias
+	}{
+		(*BlockAlias)(b),
+	}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		GetLogger().Error("Error while unmarshalling block")
+		return err
+	}
+
+	return nil
 }

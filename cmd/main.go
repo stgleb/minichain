@@ -50,6 +50,7 @@ func main() {
 	}
 
 	http.HandleFunc("/tx", blockChainServer.TransactionHandler)
+	http.HandleFunc("/search", blockChainServer.SearchByKey)
 
 	server := &http.Server{
 		ReadTimeout:  time.Duration(config.Http.Timeout) * time.Second,

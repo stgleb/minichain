@@ -26,6 +26,7 @@ type BlockChain struct {
 	Timeout       time.Duration
 	Input         chan *Transaction
 	ShutDown      chan chan struct{}
+	Search        chan *SearchRequest
 }
 
 func NewBlockChain(config *Config) (*BlockChain, error) {
@@ -58,6 +59,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		Timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
 		Input:         make(chan *Transaction),
 		ShutDown:      make(chan chan struct{}),
+		Search:        make(chan *SearchRequest),
 	}
 
 	go m.Run()
@@ -66,7 +68,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 }
 
 func (b BlockChain) Run() {
-	var transactions = make([]*Transaction, 0, b.BlockSize)
+	var transactions = make([]Transaction, 0, b.BlockSize)
 
 	for {
 		select {
@@ -84,7 +86,7 @@ func (b BlockChain) Run() {
 			return
 		case tx := <-b.Input:
 			GetLogger().Infof("Receive transaction %v", tx)
-			transactions = append(transactions, tx)
+			transactions = append(transactions, *tx)
 
 			if len(transactions) == b.BlockSize {
 				if err := b.Flush(transactions); err != nil {
@@ -92,7 +94,7 @@ func (b BlockChain) Run() {
 				}
 				// Reset ticket after transaction pool overflow
 				b.ticker = time.NewTicker(b.Timeout)
-				transactions = make([]*Transaction, 0, b.BlockSize)
+				transactions = make([]Transaction, 0, b.BlockSize)
 			}
 		case <-b.ticker.C:
 			GetLogger().Info("Flush by ticker")
@@ -100,12 +102,28 @@ func (b BlockChain) Run() {
 				GetLogger().Error(err)
 			}
 
-			transactions = make([]*Transaction, 0, b.BlockSize)
+			transactions = make([]Transaction, 0, b.BlockSize)
+		case searchRequest := <-b.Search:
+			GetLogger().Infof("Search by key %s", searchRequest.Key)
+
+			go func() {
+				tx, err := b.Index.Get(searchRequest.Key)
+				searchResult := &SearchResult{
+					tx,
+					err,
+				}
+
+				select {
+				case <-searchRequest.ctx.Done():
+					return
+				case searchRequest.ResultChan <- searchResult:
+				}
+			}()
 		}
 	}
 }
 
-func (b BlockChain) Flush(transactions []*Transaction) error {
+func (b BlockChain) Flush(transactions []Transaction) error {
 	var block *Block
 
 	if len(transactions) == 0 {
@@ -120,7 +138,7 @@ func (b BlockChain) Flush(transactions []*Transaction) error {
 	}
 
 	blockSize := uint32(len(blockBytes))
-	header := make([]byte, 4)
+	header := make([]byte, HEADER_SIZE)
 	binary.LittleEndian.PutUint32(header, blockSize)
 
 	// Append current block hash to the end of record to find it out after restart
