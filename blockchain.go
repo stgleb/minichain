@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	HEADER_SIZE = 4
 	DIGEST_SIZE = 32
 )
 
@@ -27,7 +28,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	prevBlockHash, err := GetLastBlockHash(config.BlockChain.DataFile)
 
 	if err != nil {
-		prevBlockHash = []byte("Origin block")
+		prevBlockHash = []byte("Genesis block")
 	}
 
 	file, err := os.OpenFile(config.BlockChain.DataFile, os.O_SYNC|os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
