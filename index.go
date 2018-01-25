@@ -70,6 +70,7 @@ func NewIndex(fileName string) (*Index, int64, error) {
 	return index, offset, nil
 }
 
+// TODO(stgleb): Consider returning slice of tranasctions where such key was encountered
 func (index *Index) Get(key string) (*Transaction, error) {
 	f, err := os.OpenFile(index.fileName, os.O_RDONLY, 0600)
 	defer f.Close()
