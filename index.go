@@ -6,12 +6,18 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync"
 )
 
+// TODO(stgleb): Use bloom filter instead of storing all keys in map.
 type Index struct {
 	blockCount int
 	fileName   string
-	data       map[string]int64
+
+	// Mutex protects data map from read-modify-update
+	//TODO(stgleb): Consider using sync.Map
+	m    sync.RWMutex
+	data map[string]int64
 }
 
 var (
@@ -74,7 +80,10 @@ func NewIndex(fileName string) (*Index, int64, error) {
 func (index *Index) Get(key string) (*Transaction, error) {
 	f, err := os.OpenFile(index.fileName, os.O_RDONLY, 0600)
 	defer f.Close()
+
+	index.m.RLock()
 	offset, ok := index.data[key]
+	index.m.RUnlock()
 
 	if !ok {
 		return nil, KeyNotFoundErr
@@ -104,7 +113,9 @@ func (index *Index) Get(key string) (*Transaction, error) {
 // Update index with new transactions
 func (index *Index) Update(offset int64, block *Block) {
 	for _, tx := range block.Transactions {
+		index.m.Lock()
 		index.data[string(tx.Key)] = offset
+		index.m.Unlock()
 	}
 }
 
