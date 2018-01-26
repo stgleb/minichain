@@ -83,3 +83,6 @@ Build and run
 `go build && ./cmd`
 
 Default config file name is `config.toml` in cmd directory
+
+Server handles `SIGINT` and ensures that all request received
+are processed and flushed to disk.
