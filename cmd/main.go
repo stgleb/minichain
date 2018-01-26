@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/BurntSushi/toml"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	. "minichain"
 	"net"
 	"net/http"
@@ -51,6 +52,7 @@ func main() {
 
 	http.HandleFunc("/tx", blockChainServer.TransactionHandler)
 	http.HandleFunc("/search", blockChainServer.SearchByKey)
+	http.Handle("/metrics", promhttp.Handler())
 
 	server := &http.Server{
 		ReadTimeout:  time.Duration(config.Http.Timeout) * time.Second,
