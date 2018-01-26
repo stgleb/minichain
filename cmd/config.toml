@@ -4,6 +4,8 @@ LogLevel=4
 [BlockChain]
 BlockSize=1
 Timeout=60
+KeyMaxSize=5
+ValueMaxSize=512
 DataFile="../data/blockchain.dat"
 
 [Http]

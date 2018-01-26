@@ -11,9 +11,11 @@ type MainConfig struct {
 }
 
 type BlockChainConfig struct {
-	BlockSize int
-	TimeOut   int
-	DataFile  string
+	BlockSize    int
+	TimeOut      int
+	KeyMaxSize   int
+	ValueMaxSize int
+	DataFile     string
 }
 
 type HttpConfig struct {
