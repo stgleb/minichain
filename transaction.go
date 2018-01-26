@@ -3,7 +3,6 @@ package minichain
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"strconv"
 	"time"
 )

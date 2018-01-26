@@ -20,16 +20,17 @@ type BlockChain struct {
 	file   *os.File
 	ticker *time.Ticker
 
-	IndexOn       bool
-	DataFileName  string
-	Offset        int64
-	Index         *InvertedIndex
-	BlockSize     int
-	LastBlockHash []byte
-	Timeout       time.Duration
-	Input         chan *Transaction
-	ShutDown      chan chan struct{}
-	Search        chan *SearchRequest
+	indexOn       bool
+	dataFileName  string
+	offset        int64
+	index         *InvertedIndex
+	blockSize     int
+	lastBlockHash []byte
+	timeout       time.Duration
+
+	Input    chan *Transaction
+	ShutDown chan chan struct{}
+	Search   chan *SearchRequest
 }
 
 func NewBlockChain(config *Config) (*BlockChain, error) {
@@ -56,12 +57,12 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	m := &BlockChain{
 		file:          file,
 		ticker:        time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
-		DataFileName:  config.BlockChain.DataFile,
-		Offset:        offset,
-		Index:         index,
-		LastBlockHash: prevBlockHash,
-		BlockSize:     config.BlockChain.BlockSize,
-		Timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
+		dataFileName:  config.BlockChain.DataFile,
+		offset:        offset,
+		index:         index,
+		lastBlockHash: prevBlockHash,
+		blockSize:     config.BlockChain.BlockSize,
+		timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
 		Input:         make(chan *Transaction),
 		ShutDown:      make(chan chan struct{}),
 		Search:        make(chan *SearchRequest),
@@ -73,13 +74,13 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 }
 
 func (b BlockChain) Run() {
-	var transactions = make([]Transaction, 0, b.BlockSize)
+	var transactions = make([]Transaction, 0, b.blockSize)
 
 	for {
 		select {
 		case ch := <-b.ShutDown:
 			GetLogger().Info("Shutdown blockchain")
-			if err := b.Flush(transactions); err != nil {
+			if err := b.flush(transactions); err != nil {
 				GetLogger().Error(err)
 			}
 
@@ -93,21 +94,21 @@ func (b BlockChain) Run() {
 			GetLogger().Infof("Receive transaction %v", tx)
 			transactions = append(transactions, *tx)
 
-			if len(transactions) == b.BlockSize {
-				if err := b.Flush(transactions); err != nil {
+			if len(transactions) == b.blockSize {
+				if err := b.flush(transactions); err != nil {
 					GetLogger().Error(err)
 				}
 				// Reset ticket after transaction pool overflow
-				b.ticker = time.NewTicker(b.Timeout)
-				transactions = make([]Transaction, 0, b.BlockSize)
+				b.ticker = time.NewTicker(b.timeout)
+				transactions = make([]Transaction, 0, b.blockSize)
 			}
 		case <-b.ticker.C:
-			GetLogger().Info("Flush by ticker")
-			if err := b.Flush(transactions); err != nil {
+			GetLogger().Info("flush by ticker")
+			if err := b.flush(transactions); err != nil {
 				GetLogger().Error(err)
 			}
 
-			transactions = make([]Transaction, 0, b.BlockSize)
+			transactions = make([]Transaction, 0, b.blockSize)
 		case searchRequest := <-b.Search:
 			GetLogger().Infof("Search by key %s", searchRequest.Key)
 
@@ -118,10 +119,10 @@ func (b BlockChain) Run() {
 				)
 
 				// Search for key with in-memory inverted index and full scan of blockchain
-				if b.IndexOn {
-					transactions, err = b.Index.Get(searchRequest.Key)
+				if b.indexOn {
+					transactions, err = b.index.Get(searchRequest.Key)
 				} else {
-					transactions, err = FullScan(searchRequest.Key, b.DataFileName)
+					transactions, err = FullScan(searchRequest.Key, b.dataFileName)
 				}
 
 				var errStr string
@@ -144,7 +145,7 @@ func (b BlockChain) Run() {
 	}
 }
 
-func (b BlockChain) Flush(transactions []Transaction) error {
+func (b BlockChain) flush(transactions []Transaction) error {
 	var block *Block
 
 	// Do not create block and flush it on disk if there are no transactions
@@ -153,7 +154,7 @@ func (b BlockChain) Flush(transactions []Transaction) error {
 		return nil
 	}
 
-	block = NewBlock(b.LastBlockHash, transactions)
+	block = NewBlock(b.lastBlockHash, transactions)
 	blockBytes, err := json.Marshal(block)
 
 	if err != nil {
@@ -180,9 +181,9 @@ func (b BlockChain) Flush(transactions []Transaction) error {
 	}
 
 	// Update index with block that was written to disk
-	b.Index.Update(b.Offset, block)
-	b.Offset += int64(len(data))
+	b.index.Update(b.offset, block)
+	b.offset += int64(len(data))
 
-	b.LastBlockHash = block.BlockHash
+	b.lastBlockHash = block.BlockHash
 	return nil
 }

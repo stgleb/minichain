@@ -17,6 +17,7 @@ var (
 	configFile string
 )
 
+// TODO(stgleb): Add ability to override config from Env variables and command line args
 func init() {
 	flag.StringVar(&configFile, "config", "config.toml", "config file name")
 
