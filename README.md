@@ -70,6 +70,10 @@ bytes in block.
 
 ## Run server
 
+Create datadir if not exists
+
+`mkdir data`
+
 Change dir
 
 `cd cmd/`
