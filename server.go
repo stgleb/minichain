@@ -57,6 +57,9 @@ func (blockChainServer *BlockChainServer) TransactionHandler(w http.ResponseWrit
 
 	tx := NewTransaction(key, value)
 	blockChainServer.BlockChain.Input <- tx
+
+	// Status is accepted since transaction flushes to disk asynchronously
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (blockChainServer *BlockChainServer) SearchByKey(w http.ResponseWriter, r *http.Request) {
@@ -80,8 +83,13 @@ func (blockChainServer *BlockChainServer) SearchByKey(w http.ResponseWriter, r *
 
 	select {
 	case <-ctx.Done():
-		http.Error(w, "search request timed out", http.StatusNotFound)
+		// Lets consider timeout for search as a timeout of requesting another service
+		http.Error(w, "search request timed out", http.StatusGatewayTimeout)
 	case searchResult := <-resultChan:
+		if len(searchResult.Transactions) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+		}
+
 		json.NewEncoder(w).Encode(searchResult)
 	}
 }

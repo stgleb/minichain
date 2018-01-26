@@ -1,8 +1,6 @@
 package minichain
 
 import (
-	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -10,14 +8,14 @@ import (
 )
 
 // TODO(stgleb): Use bloom filter instead of storing all keys in map.
-type Index struct {
+type InvertedIndex struct {
 	blockCount int
 	fileName   string
 
-	// Mutex protects data map from read-modify-update
+	// Mutex protects data map from races
 	//TODO(stgleb): Consider using sync.Map
 	m    sync.RWMutex
-	data map[string]int64
+	data map[string][]int64
 }
 
 var (
@@ -25,14 +23,14 @@ var (
 	NotEnoughDataErr = errors.New("not enough data in file")
 )
 
-func NewIndex(fileName string) (*Index, int64, error) {
+func NewIndex(fileName string) (*InvertedIndex, int64, error) {
 	GetLogger().Infof("Start building index of %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
 	defer f.Close()
 
-	index := &Index{
+	index := &InvertedIndex{
 		fileName: fileName,
-		data:     make(map[string]int64),
+		data:     make(map[string][]int64),
 	}
 
 	if err != nil {
@@ -66,109 +64,71 @@ func NewIndex(fileName string) (*Index, int64, error) {
 			GetLogger().Debugf("Read block id %s on offset %d",
 				string(block.BlockHash), offset)
 			for _, tx := range block.Transactions {
-				index.data[string(tx.Key)] = offset
+				if index.data[string(tx.Key)] == nil {
+					index.data[string(tx.Key)] = []int64{offset}
+				} else {
+					index.data[string(tx.Key)] = append(index.data[string(tx.Key)], offset)
+				}
 			}
 			blockCount++
 		}
 	}
 
-	GetLogger().Debugf("Index has been built from %d blocks", blockCount)
+	GetLogger().Debugf("InvertedIndex has been built from %d blocks", blockCount)
 	return index, offset, nil
 }
 
 // TODO(stgleb): Consider returning slice of tranasctions where such key was encountered
-func (index *Index) Get(key string) (*Transaction, error) {
+func (index *InvertedIndex) Get(key string) ([]Transaction, error) {
 	f, err := os.OpenFile(index.fileName, os.O_RDONLY, 0600)
 	defer f.Close()
 
 	index.m.RLock()
-	offset, ok := index.data[key]
+	offsets, ok := index.data[key]
+	// Make a copy of slice to avoid concurrent read-update
+	offsets = offsets[:]
 	index.m.RUnlock()
 
 	if !ok {
 		return nil, KeyNotFoundErr
 	}
 
-	_, err = f.Seek(offset, 0)
+	var transactions = make([]Transaction, 0, len(offsets))
 
-	if err != nil {
-		return nil, err
-	}
+	for _, offset := range offsets {
+		_, err = f.Seek(offset, 0)
 
-	block, _, err := readBlock(f)
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
-	}
+		block, _, err := readBlock(f)
 
-	for _, tx := range block.Transactions {
-		if string(tx.Key) == key {
-			return &tx, nil
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tx := range block.Transactions {
+			if string(tx.Key) == key {
+				transactions = append(transactions, tx)
+			}
 		}
 	}
 
-	return nil, KeyNotFoundErr
+	return transactions, nil
 }
 
 // Update index with new transactions
-func (index *Index) Update(offset int64, block *Block) {
+func (index *InvertedIndex) Update(offset int64, block *Block) {
 	for _, tx := range block.Transactions {
 		index.m.Lock()
-		index.data[string(tx.Key)] = offset
+		// This update on slice that stores key offsets is safe since we allow only
+		// one goroutine to update it.
+		if index.data[string(tx.Key)] == nil {
+			index.data[string(tx.Key)] = []int64{offset}
+		} else {
+			index.data[string(tx.Key)] = append(index.data[string(tx.Key)], offset)
+		}
 		index.m.Unlock()
 	}
-}
-
-// Reads block from blockchain file, assumes that file pointer of fd is set on
-// the beginning of next block
-func readBlock(fd *os.File) (*Block, int64, error) {
-	offset, err := fd.Seek(0, 1)
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	headerData := make([]byte, HEADER_SIZE)
-	n, err := fd.Read(headerData)
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	if n != HEADER_SIZE {
-		return nil, -1, NotEnoughDataErr
-	}
-
-	blockSize := binary.LittleEndian.Uint32(headerData)
-	blockBuffer := make([]byte, blockSize)
-	n, err = fd.Read(blockBuffer)
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	if uint32(n) != blockSize {
-		return nil, -1, NotEnoughDataErr
-	}
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	var block = &Block{}
-
-	err = json.Unmarshal(blockBuffer, block)
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	// Set fd to begin of next block or EOF
-	_, err = fd.Seek(DIGEST_SIZE, 1)
-
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return block, offset, nil
 }

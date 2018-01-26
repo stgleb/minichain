@@ -15,6 +15,7 @@ type BlockChainConfig struct {
 	TimeOut      int
 	KeyMaxSize   int
 	ValueMaxSize int
+	IndexOn      bool
 	DataFile     string
 }
 

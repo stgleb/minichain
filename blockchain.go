@@ -16,11 +16,14 @@ const (
 )
 
 type BlockChain struct {
+	// Current data file descriptor
 	file   *os.File
 	ticker *time.Ticker
 
+	IndexOn       bool
+	DataFileName  string
 	Offset        int64
-	Index         *Index
+	Index         *InvertedIndex
 	BlockSize     int
 	LastBlockHash []byte
 	Timeout       time.Duration
@@ -37,6 +40,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		prevBlockHash = hash[:]
 	}
 
+	// TODO(stgleb): Consider usage of O_DIRECT mode for writing
 	file, err := os.OpenFile(config.BlockChain.DataFile, os.O_SYNC|os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 
 	if err != nil {
@@ -52,6 +56,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	m := &BlockChain{
 		file:          file,
 		ticker:        time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
+		DataFileName:  config.BlockChain.DataFile,
 		Offset:        offset,
 		Index:         index,
 		LastBlockHash: prevBlockHash,
@@ -107,10 +112,26 @@ func (b BlockChain) Run() {
 			GetLogger().Infof("Search by key %s", searchRequest.Key)
 
 			go func() {
-				tx, err := b.Index.Get(searchRequest.Key)
+				var (
+					err          error
+					transactions []Transaction
+				)
+
+				// Search for key with in-memory inverted index and full scan of blockchain
+				if b.IndexOn {
+					transactions, err = b.Index.Get(searchRequest.Key)
+				} else {
+					transactions, err = FullScan(searchRequest.Key, b.DataFileName)
+				}
+
+				var errStr string
+
+				if err != nil {
+					errStr = err.Error()
+				}
 				searchResult := &SearchResult{
-					tx,
-					err,
+					transactions,
+					errStr,
 				}
 
 				select {
@@ -126,7 +147,9 @@ func (b BlockChain) Run() {
 func (b BlockChain) Flush(transactions []Transaction) error {
 	var block *Block
 
+	// Do not create block and flush it on disk if there are no transactions
 	if len(transactions) == 0 {
+		GetLogger().Warn("Skip flushing empty block")
 		return nil
 	}
 

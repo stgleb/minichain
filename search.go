@@ -9,6 +9,6 @@ type SearchRequest struct {
 }
 
 type SearchResult struct {
-	Transaction *Transaction `json:"transaction"`
-	Error       error        `json:"error"`
+	Transactions []Transaction `json:"transaction"`
+	Error        string        `json:"error"`
 }
