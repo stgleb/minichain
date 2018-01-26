@@ -37,19 +37,3 @@ func NewBlock(prevBlockHash []byte, transactions []Transaction) *Block {
 
 	return block
 }
-
-func (b *Block) UnmarshalJSON(data []byte) error {
-	type BlockAlias Block
-	aux := &struct {
-		*BlockAlias
-	}{
-		(*BlockAlias)(b),
-	}
-
-	if err := json.Unmarshal(data, aux); err != nil {
-		GetLogger().Error("Error while unmarshalling block")
-		return err
-	}
-
-	return nil
-}

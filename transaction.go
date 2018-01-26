@@ -30,19 +30,3 @@ func NewTransaction(key, value string) *Transaction {
 
 	return tx
 }
-
-func (tx *Transaction) UnmarshalJSON(data []byte) error {
-	type Tx Transaction
-	aux := &struct {
-		*Tx
-	}{
-		(*Tx)(tx),
-	}
-
-	if err := json.Unmarshal(data, aux); err != nil {
-		GetLogger().Error("Error while unmarshalling transaction")
-		return err
-	}
-
-	return nil
-}
