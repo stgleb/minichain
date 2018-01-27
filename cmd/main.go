@@ -5,7 +5,7 @@ import (
 	"flag"
 	"github.com/BurntSushi/toml"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	. "minichain"
+	. "github.com/stgleb/minichain"
 	"net"
 	"net/http"
 	"os"

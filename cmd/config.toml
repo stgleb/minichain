@@ -12,7 +12,7 @@ KeyMaxSize=5
 ValueMaxSize=512
 IndexOn=false
 # Path to file that contains blockchain records
-DataFile="../data/blockchain.dat"
+DataFile="blockchain.dat"
 
 [Http]
 ListenStr="0.0.0.0:8080"
