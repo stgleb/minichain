@@ -46,7 +46,7 @@ func (blockChainServer *BlockChainServer) TransactionHandler(w http.ResponseWrit
 
 	value := r.URL.Query().Get("value")
 
-	if len(key) > blockChainServer.ValueMaxSize {
+	if len(value) > blockChainServer.ValueMaxSize {
 		http.Error(w, fmt.Sprintf("Value size is too long %d max allowed %d",
 			len(value), blockChainServer.ValueMaxSize),
 			http.StatusBadRequest)
