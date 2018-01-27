@@ -3,7 +3,6 @@ package minichain
 import (
 	"errors"
 	"io"
-	"os"
 	"sync"
 )
 
@@ -29,52 +28,35 @@ import (
 
 // TODO(stgleb): Use bloom filter instead of storing all keys in map.
 type InvertedIndex struct {
-	blockCount int
-	fileName   string
-
 	// Mutex protects data map from races
 	//TODO(stgleb): Consider using sync.Map
 	m    sync.RWMutex
 	data map[string][]int64
+	file io.ReadSeeker
 }
 
 var (
 	KeyNotFoundErr   = errors.New("key not found")
-	NotEnoughDataErr = errors.New("not enough data in file")
+	NotEnoughDataErr = errors.New("not enough data in reader")
 )
 
-func NewIndex(fileName string) (*InvertedIndex, int64, error) {
-	GetLogger().Infof("Start building index of %s", fileName)
-	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
-	defer f.Close()
+func NewIndex(file io.ReadSeeker) (*InvertedIndex, int64, error) {
+	GetLogger().Info("Start building index")
 
 	index := &InvertedIndex{
-		fileName: fileName,
-		data:     make(map[string][]int64),
-	}
-
-	if err != nil {
-		return index, 0, err
-	}
-
-	stats, err := f.Stat()
-
-	if err != nil {
-		return index, 0, err
-	}
-
-	if stats.Size() == 0 {
-		return index, 0, nil
+		file: file,
+		data: make(map[string][]int64),
 	}
 
 	var (
+		err        error
 		blockCount int64
 		offset     int64
 		block      *Block
 	)
 
 	for {
-		if block, offset, err = readBlock(f); err != nil {
+		if block, offset, err = readBlock(file); err != nil {
 			if err != io.EOF {
 				return nil, 0, err
 			} else {
@@ -98,31 +80,31 @@ func NewIndex(fileName string) (*InvertedIndex, int64, error) {
 	return index, offset, nil
 }
 
-// TODO(stgleb): Consider returning slice of tranasctions where such key was encountered
+// TODO(stgleb): Consider returning slice of transactions where such key was encountered
 func (index *InvertedIndex) Get(key string) ([]Transaction, error) {
-	f, err := os.OpenFile(index.fileName, os.O_RDONLY, 0600)
-	defer f.Close()
+	// Protect Get method with Write lock since it modifies Seeker e.g fd state.
+	index.m.Lock()
+	defer index.m.Unlock()
 
-	index.m.RLock()
 	offsets, ok := index.data[key]
-	// Make a copy of slice to avoid concurrent read-update
-	offsets = offsets[:]
-	index.m.RUnlock()
 
 	if !ok {
 		return nil, KeyNotFoundErr
 	}
 
-	var transactions = make([]Transaction, 0, len(offsets))
+	var (
+		err          error
+		transactions = make([]Transaction, 0, len(offsets))
+	)
 
 	for _, offset := range offsets {
-		_, err = f.Seek(offset, 0)
+		_, err = index.file.Seek(offset, 0)
 
 		if err != nil {
 			return nil, err
 		}
 
-		block, _, err := readBlock(f)
+		block, _, err := readBlock(index.file)
 
 		if err != nil {
 			return nil, err

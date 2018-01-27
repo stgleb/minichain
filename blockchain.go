@@ -16,8 +16,9 @@ const (
 )
 
 type BlockChain struct {
-	// Current data file descriptor
-	file   *os.File
+	// Current data writer descriptor
+	writer *os.File
+	reader *os.File
 	ticker *time.Ticker
 
 	indexOn       bool
@@ -34,7 +35,10 @@ type BlockChain struct {
 }
 
 func NewBlockChain(config *Config) (*BlockChain, error) {
-	prevBlockHash, err := GetLastBlockHash(config.BlockChain.DataFile)
+	f, err := os.OpenFile(config.BlockChain.DataFile, os.O_RDONLY, 0600)
+	f.Close()
+
+	prevBlockHash, err := getLastBlockHash(f)
 
 	if err != nil {
 		hash := sha256.Sum256([]byte(GENESIS_BLOCK))
@@ -48,18 +52,34 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		return nil, err
 	}
 
-	index, offset, err := NewIndex(config.BlockChain.DataFile)
+	// File descriptor fo build index and monitor writer updates
+	reader, err := os.OpenFile(config.BlockChain.DataFile, os.O_RDONLY, 0600)
 
 	if err != nil {
 		return nil, err
 	}
 
+	var (
+		index  *InvertedIndex
+		offset int64
+	)
+
+	if config.BlockChain.IndexOn {
+		index, offset, err = NewIndex(reader)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	m := &BlockChain{
-		file:          file,
+		reader:        reader,
+		writer:        file,
 		ticker:        time.NewTicker(time.Second * time.Duration(config.BlockChain.TimeOut)),
 		dataFileName:  config.BlockChain.DataFile,
 		offset:        offset,
 		index:         index,
+		indexOn:       config.BlockChain.IndexOn,
 		lastBlockHash: prevBlockHash,
 		blockSize:     config.BlockChain.BlockSize,
 		timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,
@@ -84,8 +104,12 @@ func (b *BlockChain) Run() {
 				GetLogger().Error(err)
 			}
 
-			if err := b.file.Close(); err != nil {
-				GetLogger().Error(err)
+			if err := b.reader.Close(); err != nil {
+				GetLogger().Errorf("Error closing reader %s", err.Error())
+			}
+
+			if err := b.writer.Close(); err != nil {
+				GetLogger().Errorf("Error closing writer %s", err.Error())
 			}
 
 			close(ch)
@@ -122,7 +146,9 @@ func (b *BlockChain) Run() {
 				if b.indexOn {
 					transactions, err = b.index.Get(searchRequest.Key)
 				} else {
-					transactions, err = FullScan(searchRequest.Key, b.dataFileName)
+					transactions, err = fullScan(searchRequest.Key, b.reader)
+					// Set file pointer to begin of the file after scan
+					b.reader.Seek(0, 0)
 				}
 
 				var errStr string
@@ -167,21 +193,23 @@ func (b *BlockChain) flush(transactions []Transaction) error {
 
 	// Append current block hash to the end of record to find it out after restart
 	data := bytes.Join([][]byte{header, blockBytes, block.BlockHash}, []byte{})
-	n, err := b.file.Write(data)
+	n, err := b.writer.Write(data)
 
 	if err != nil {
 		return err
 	}
 
 	GetLogger().Debugf("Bytes written %d", n)
-	err = b.file.Sync()
+	err = b.writer.Sync()
 
 	if err != nil {
 		return err
 	}
 
 	// Update index with block that was written to disk
-	b.index.Update(b.offset, block)
+	if b.indexOn {
+		b.index.Update(b.offset, block)
+	}
 	b.offset += int64(len(data))
 	b.lastBlockHash = block.BlockHash
 

@@ -44,7 +44,6 @@ func main() {
 	}
 
 	InitLogger(config)
-	GetLogger().Info(config)
 	blockChainServer, err := NewBlockChainServer(config)
 
 	if err != nil {

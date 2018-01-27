@@ -5,17 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 )
 
-func GetLastBlockHash(fileName string) ([]byte, error) {
-	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = f.Seek(-DIGEST_SIZE, 2)
+func getLastBlockHash(f io.ReadSeeker) ([]byte, error) {
+	_, err := f.Seek(-DIGEST_SIZE, 2)
 
 	if err != nil {
 		return nil, err
@@ -35,14 +28,9 @@ func GetLastBlockHash(fileName string) ([]byte, error) {
 	return prevBlockHash, nil
 }
 
-func FullScan(key, fileName string) ([]Transaction, error) {
-	f, err := os.OpenFile(fileName, os.O_RDONLY, 0600)
-
-	if err != nil {
-		return nil, err
-	}
-
+func fullScan(key string, f io.ReadSeeker) ([]Transaction, error) {
 	var (
+		err          error
 		blockCount   int64
 		offset       int64
 		block        *Block
@@ -76,9 +64,9 @@ func FullScan(key, fileName string) ([]Transaction, error) {
 
 }
 
-// Reads block from blockchain file, assumes that file pointer of fd is set on
+// Reads block from blockchain writer, assumes that writer pointer of fd is set on
 // the beginning of next block
-func readBlock(fd *os.File) (*Block, int64, error) {
+func readBlock(fd io.ReadSeeker) (*Block, int64, error) {
 	offset, err := fd.Seek(0, 1)
 
 	if err != nil {
