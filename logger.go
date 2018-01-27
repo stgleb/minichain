@@ -6,10 +6,9 @@ import (
 
 var logInstance *logrus.Logger
 
-func InitLogger(config *Config) {
+func InitLogger(logLevel int) {
 	logInstance = logrus.New()
-	logLevel := logrus.AllLevels[config.Main.LogLevel]
-	logInstance.Level = logLevel
+	logInstance.Level = logrus.AllLevels[logLevel]
 
 }
 

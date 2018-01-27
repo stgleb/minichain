@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	InitLogger(config)
+	InitLogger(config.Main.LogLevel)
 	blockChainServer, err := NewBlockChainServer(config)
 
 	if err != nil {
