@@ -73,7 +73,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	return m, err
 }
 
-func (b BlockChain) Run() {
+func (b *BlockChain) Run() {
 	var transactions = make([]Transaction, 0, b.blockSize)
 
 	for {
@@ -145,7 +145,7 @@ func (b BlockChain) Run() {
 	}
 }
 
-func (b BlockChain) flush(transactions []Transaction) error {
+func (b *BlockChain) flush(transactions []Transaction) error {
 	var block *Block
 
 	// Do not create block and flush it on disk if there are no transactions
@@ -183,7 +183,7 @@ func (b BlockChain) flush(transactions []Transaction) error {
 	// Update index with block that was written to disk
 	b.index.Update(b.offset, block)
 	b.offset += int64(len(data))
-
 	b.lastBlockHash = block.BlockHash
+
 	return nil
 }

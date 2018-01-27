@@ -24,6 +24,9 @@ func NewBlock(prevBlockHash []byte, transactions []Transaction) *Block {
 		Transactions:  transactions,
 	}
 
+	GetLogger().Debugf("Create new block with timestamp %d prev-block-hash %s tx count",
+		block.Timestamp, string(block.PrevBlockHash), len(block.Transactions))
+
 	for _, tx := range transactions {
 		txHashes = append(txHashes, tx.Id)
 	}

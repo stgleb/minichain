@@ -8,7 +8,7 @@ BlockSize=1
 # Flush timeout in seconds when block sync to disk
 Timeout=60
 # Restrictions on transactions size
-KeyMaxSize=5
+KeyMaxSize=6
 ValueMaxSize=512
 IndexOn=false
 # Path to file that contains blockchain records
