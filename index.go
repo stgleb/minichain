@@ -7,6 +7,26 @@ import (
 	"sync"
 )
 
+/*
+	Inverted index that tracks offsets of blocks this key belongs to
+
+	Example:
+
+	blockchain
+
+	0	block0: tx{key: hello}, tx{key: apple}
+	28	block1: tx{key: banana}
+	76	block2: tx{key: pear}, tx{key: hello}, tx{key: world}
+
+	Index
+
+		apple  - [0]
+		banana - [28]
+		hello  - [0, 76]
+		pear   - [76]
+		world  - [76]
+*/
+
 // TODO(stgleb): Use bloom filter instead of storing all keys in map.
 type InvertedIndex struct {
 	blockCount int
