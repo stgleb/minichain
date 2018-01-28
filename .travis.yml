@@ -8,3 +8,4 @@ script:
  - go fmt
  - go vet
  - go test -v
+ - $GOPATH/bin/goveralls -repotoken mSZ3BouBFC9XtzCxoneLWppfksswqYAlj

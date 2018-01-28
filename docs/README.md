@@ -1,6 +1,7 @@
 # Minichain project
 
 [![Build Status](https://travis-ci.org/stgleb/minichain.svg?branch=master)](https://travis-ci.org/stgleb/minichain)
+[![Coverage Status](https://coveralls.io/repos/github/stgleb/minichain/badge.svg?branch=tests)](https://coveralls.io/github/stgleb/minichain?branch=tests)
 
 Project implements basic ideas of blockchain that
 stores transactions composed to blocks and linked
