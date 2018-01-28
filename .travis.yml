@@ -5,4 +5,6 @@ before_install:
   - go get github.com/mattn/goveralls
   - go get -v
 script:
- - go test -v ./...
+ - go fmt
+ - go vet
+ - go test -v
