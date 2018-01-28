@@ -1,5 +1,7 @@
 # Minichain project
 
+[![Build Status](https://travis-ci.org/stgleb/minichain.svg?branch=master)](https://travis-ci.org/stgleb/minichain)
+
 Project implements basic ideas of blockchain that
 stores transactions composed to blocks and linked
 in chain. Each transaction and block is hashed using
