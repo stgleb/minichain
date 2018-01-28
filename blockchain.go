@@ -24,7 +24,7 @@ type BlockChain struct {
 	indexOn       bool
 	dataFileName  string
 	offset        int64
-	index         *InvertedIndex
+	index         *BloomFilterIndex
 	blockSize     int
 	lastBlockHash []byte
 	timeout       time.Duration
@@ -60,7 +60,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	}
 
 	var (
-		index  *InvertedIndex
+		index  *BloomFilterIndex
 		offset int64
 	)
 

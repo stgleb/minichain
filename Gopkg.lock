@@ -68,10 +68,28 @@
   revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
 
 [[projects]]
+  name = "github.com/spaolacci/murmur3"
+  packages = ["."]
+  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
+  version = "v1.1"
+
+[[projects]]
+  name = "github.com/willf/bitset"
+  packages = ["."]
+  revision = "d860f346b89450988a379d7d705e83c58d1ea227"
+  version = "v1.1.3"
+
+[[projects]]
+  name = "github.com/willf/bloom"
+  packages = ["."]
+  revision = "54e3b963ee1652b06c4562cb9b6020ebc6e36e59"
+  version = "v2.0.3"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "0efb9460aaf800c6376acf625be2853bceac2e06"
+  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
 
 [[projects]]
   branch = "master"
@@ -80,11 +98,11 @@
     "unix",
     "windows"
   ]
-  revision = "03467258950d845cd1877eab69461b98e8c09219"
+  revision = "ff2a66f350cefa5c93a634eadb5d25bb60c85a9c"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "46899779e562dbdfe203ac60ac61c1bdd88e17a07abb7710be0d02a043970f50"
+  inputs-digest = "49580d6d07922d0351b53838527ecc61ca6a71072d28be3fcc8cf9e76c3fa58d"
   solver-name = "gps-cdcl"
   solver-version = 1

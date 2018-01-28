@@ -48,7 +48,7 @@ func TestInvertedIndexGet(t *testing.T) {
 	data := bytes.Join([][]byte{padding, header, blockBytes, block.BlockHash}, []byte{})
 	file := bytes.NewReader(data)
 
-	index := &InvertedIndex{
+	index := &BloomFilterIndex{
 		file: file,
 		data: map[string][]int64{
 			key: {
@@ -93,7 +93,7 @@ func TestInvertedIndexUpdate(t *testing.T) {
 		},
 	}
 
-	index := &InvertedIndex{
+	index := &BloomFilterIndex{
 		data: map[string][]int64{},
 	}
 
