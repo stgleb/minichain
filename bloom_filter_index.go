@@ -1,7 +1,6 @@
 package minichain
 
 import (
-	"errors"
 	"github.com/willf/bloom"
 	"io"
 	"math"
@@ -10,7 +9,7 @@ import (
 
 /*
 	Bloom filter index stores small set of information about the block and
-	saves disk read operations
+	saves disk read operations.
 */
 
 type BlockInfo struct {
@@ -25,17 +24,12 @@ type BloomFilterIndex struct {
 	file   io.ReadSeeker
 }
 
-var (
-	KeyNotFoundErr   = errors.New("key not found")
-	NotEnoughDataErr = errors.New("not enough data in reader")
-)
-
-func NewIndex(file io.ReadSeeker) (*BloomFilterIndex, int64, error) {
+func NewBloomFilterIndex(file io.ReadSeeker) (Index, int64, error) {
 	GetLogger().Info("Start building index")
 
 	index := &BloomFilterIndex{
 		file:   file,
-		blocks: make([]*BlockInfo, 32),
+		blocks: make([]*BlockInfo, 0, 32),
 	}
 
 	var (
@@ -104,6 +98,7 @@ func (index *BloomFilterIndex) Get(key string) ([]Transaction, error) {
 			return nil, err
 		}
 
+		// Check whether block contains key or not
 		for _, tx := range block.Transactions {
 			if string(tx.Key) == key {
 				transactions = append(transactions, tx)
@@ -116,7 +111,8 @@ func (index *BloomFilterIndex) Get(key string) ([]Transaction, error) {
 
 // Update index with new transactions
 func (index *BloomFilterIndex) Update(offset int64, block *Block) {
-	filter := bloom.New(uint(len(block.Transactions)), uint(math.Ceil(0.69*20)))
+	// Such parameter of hash functions gives least false positive probability 0.0001
+	filter := bloom.New(uint(len(block.Transactions)) * 20, uint(math.Ceil(0.69*20)))
 	info := &BlockInfo{
 		filter: filter,
 		offset: offset,

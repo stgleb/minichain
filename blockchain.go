@@ -24,7 +24,7 @@ type BlockChain struct {
 	indexOn       bool
 	dataFileName  string
 	offset        int64
-	index         *BloomFilterIndex
+	index         Index
 	blockSize     int
 	lastBlockHash []byte
 	timeout       time.Duration
@@ -60,12 +60,12 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 	}
 
 	var (
-		index  *BloomFilterIndex
+		index  Index
 		offset int64
 	)
 
-	if config.BlockChain.IndexOn {
-		index, offset, err = NewIndex(reader)
+	if config.Index.IsOn {
+		index, offset, err = NewIndex(reader, config.Index.IndexType)
 
 		if err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		dataFileName:  config.BlockChain.DataFile,
 		offset:        offset,
 		index:         index,
-		indexOn:       config.BlockChain.IndexOn,
+		indexOn:       config.Index.IsOn,
 		lastBlockHash: prevBlockHash,
 		blockSize:     config.BlockChain.BlockSize,
 		timeout:       time.Duration(config.BlockChain.TimeOut) * time.Second,

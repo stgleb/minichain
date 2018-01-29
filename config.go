@@ -3,6 +3,7 @@ package minichain
 type Config struct {
 	Main       MainConfig
 	BlockChain BlockChainConfig
+	Index      IndexConfig
 	Http       HttpConfig
 }
 
@@ -15,8 +16,12 @@ type BlockChainConfig struct {
 	TimeOut      int
 	KeyMaxSize   int
 	ValueMaxSize int
-	IndexOn      bool
 	DataFile     string
+}
+
+type IndexConfig struct{
+	IndexType string
+	IsOn bool
 }
 
 type HttpConfig struct {

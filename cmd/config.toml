@@ -14,6 +14,10 @@ IndexOn=true
 # Path to file that contains blockchain records
 DataFile="blockchain.dat"
 
+[Index]
+IndexType = "BloomFilter"
+IsOn = true
+
 [Http]
 ListenStr="0.0.0.0:8080"
 # Read/Write timeout in seconds
