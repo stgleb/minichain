@@ -86,7 +86,7 @@ func readBlock(reader io.ReadSeeker) (*Block, int64, error) {
 	n, err := reader.Read(headerData)
 
 	if err != nil {
-		return nil, 0, err
+		return nil, offset, err
 	}
 
 	if n != HEADER_SIZE {
