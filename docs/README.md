@@ -76,7 +76,7 @@ bytes in block.
 ```
 [Main]
 # Level of log verbosity 0 - panic, 1 - fatal, 2 - error, 3 - warn, 4 -info, 5 - debug
-LogLevel=4
+LogLevel=5
 
 [BlockChain]
 # Amount of transactions that can be included to block
@@ -84,11 +84,16 @@ BlockSize=1
 # Flush timeout in seconds when block sync to disk
 Timeout=60
 # Restrictions on transactions size
-KeyMaxSize=5
+KeyMaxSize=6
 ValueMaxSize=512
-IndexOn=false
+IndexOn=true
 # Path to file that contains blockchain records
-DataFile="../data/blockchain.dat"
+DataFile="blockchain.dat"
+
+[Index]
+# Index types - BloomFilter, InvertedIndex or None
+IndexType = "BloomFilter"
+IsOn = true
 
 [Http]
 ListenStr="0.0.0.0:8080"

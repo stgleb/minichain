@@ -112,7 +112,7 @@ func (index *BloomFilterIndex) Get(key string) ([]Transaction, error) {
 // Update index with new transactions
 func (index *BloomFilterIndex) Update(offset int64, block *Block) {
 	// Such parameter of hash functions gives least false positive probability 0.0001
-	filter := bloom.New(uint(len(block.Transactions)) * 20, uint(math.Ceil(0.69*20)))
+	filter := bloom.New(uint(len(block.Transactions))*20, uint(math.Ceil(0.69*20)))
 	info := &BlockInfo{
 		filter: filter,
 		offset: offset,

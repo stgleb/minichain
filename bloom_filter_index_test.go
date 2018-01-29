@@ -1,13 +1,13 @@
 package minichain
 
 import (
-	"testing"
-	"crypto/sha256"
-	"encoding/json"
-	"encoding/binary"
 	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/json"
 	"github.com/willf/bloom"
 	"math"
+	"testing"
 )
 
 // Test index get with padding
@@ -60,7 +60,7 @@ func TestBloomFilterIndexGet(t *testing.T) {
 
 	index := &BloomFilterIndex{
 		blocks: []*BlockInfo{info},
-		file:file,
+		file:   file,
 	}
 
 	txs, err := index.Get(key)
@@ -113,4 +113,3 @@ func TestBloomFilterIndexUpdate(t *testing.T) {
 		t.Errorf("Cannot find key in index")
 	}
 }
-

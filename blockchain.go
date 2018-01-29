@@ -52,7 +52,6 @@ func NewBlockChain(config *Config) (*BlockChain, error) {
 		return nil, err
 	}
 
-	// File descriptor fo build index and monitor writer updates
 	reader, err := os.OpenFile(config.BlockChain.DataFile, os.O_RDONLY, 0600)
 
 	if err != nil {
@@ -154,6 +153,7 @@ func (b *BlockChain) Run() {
 				var errStr string
 
 				if err != nil {
+					GetLogger().Error(err)
 					errStr = err.Error()
 				}
 				searchResult := &SearchResult{

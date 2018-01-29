@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"sync"
+)
+
+var (
+	m sync.Mutex
 )
 
 func getLastBlockHash(f io.ReadSeeker) ([]byte, error) {
@@ -66,38 +71,42 @@ func fullScan(key string, f io.ReadSeeker) ([]Transaction, error) {
 
 // Reads block from blockchain writer, assumes that writer pointer of fd is set on
 // the beginning of next block
-func readBlock(fd io.ReadSeeker) (*Block, int64, error) {
-	offset, err := fd.Seek(0, 1)
+func readBlock(reader io.ReadSeeker) (*Block, int64, error) {
+	// Protect function with lock since it modifies reader state
+	m.Lock()
+	defer m.Unlock()
+
+	offset, err := reader.Seek(0, 1)
 
 	if err != nil {
-		return nil, -1, err
+		return nil, offset, err
 	}
 
 	headerData := make([]byte, HEADER_SIZE)
-	n, err := fd.Read(headerData)
+	n, err := reader.Read(headerData)
 
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	if n != HEADER_SIZE {
-		return nil, -1, NotEnoughDataErr
+		return nil, offset, NotEnoughDataErr
 	}
 
 	blockSize := binary.LittleEndian.Uint32(headerData)
 	blockBuffer := make([]byte, blockSize)
-	n, err = fd.Read(blockBuffer)
+	n, err = reader.Read(blockBuffer)
 
 	if err != nil {
-		return nil, -1, err
+		return nil, offset, err
 	}
 
 	if uint32(n) != blockSize {
-		return nil, -1, NotEnoughDataErr
+		return nil, offset, NotEnoughDataErr
 	}
 
 	if err != nil {
-		return nil, -1, err
+		return nil, offset, err
 	}
 
 	var block = &Block{}
@@ -105,14 +114,14 @@ func readBlock(fd io.ReadSeeker) (*Block, int64, error) {
 	err = json.Unmarshal(blockBuffer, block)
 
 	if err != nil {
-		return nil, -1, err
+		return nil, offset, err
 	}
 
-	// Set fd to begin of next block or EOF
-	_, err = fd.Seek(DIGEST_SIZE, 1)
+	// Set reader to begin of next block or EOF
+	_, err = reader.Seek(DIGEST_SIZE, 1)
 
 	if err != nil {
-		return nil, -1, err
+		return nil, offset, err
 	}
 
 	return block, offset, nil

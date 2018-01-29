@@ -19,9 +19,9 @@ type BlockChainConfig struct {
 	DataFile     string
 }
 
-type IndexConfig struct{
+type IndexConfig struct {
 	IndexType string
-	IsOn bool
+	IsOn      bool
 }
 
 type HttpConfig struct {

@@ -15,7 +15,8 @@ IndexOn=true
 DataFile="blockchain.dat"
 
 [Index]
-IndexType = "BloomFilter"
+# Index types - BloomFilter, InvertedIndex
+IndexType = "InvertedIndex"
 IsOn = true
 
 [Http]

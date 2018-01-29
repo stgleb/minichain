@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	INVERTED_INDEX = "Inverted"
-	BLOOM_FILTER = "BloomFilter"
+	INVERTED_INDEX = "InvertedIndex"
+	BLOOM_FILTER   = "BloomFilter"
 )
 
 type Index interface {
